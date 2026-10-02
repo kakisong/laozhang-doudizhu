@@ -18,8 +18,8 @@ android {
         targetSdk {
             version = release(36)
         }
-        versionCode = 4
-        versionName = "1.1.1"
+        versionCode = 5
+        versionName = "2.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -45,10 +45,16 @@ android {
     androidResources {
         noCompress += "m4a"
     }
+
+    packaging {
+        // Compress the CPU runtimes for all supported ABIs in the portable sideload APK.
+        jniLibs.useLegacyPackaging = true
+    }
 }
 
 dependencies {
     implementation(project(":engine"))
+    implementation(libs.onnxruntime.android)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)

@@ -282,7 +282,10 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun budget(room: Room): SearchBudget =
-        if (room.difficulty == Difficulty.HARD) SearchBudget.Millis(HARD_THINK_MS) else SearchBudget.Samples(8)
+        when (room.difficulty) {
+            Difficulty.HARD, Difficulty.SUPER -> SearchBudget.Millis(HARD_THINK_MS)
+            else -> SearchBudget.Samples(8)
+        }
 
     private val speedFactor: Double get() = appData.value?.settings?.speed?.factor ?: 1.0
 

@@ -9,6 +9,7 @@ enum class Difficulty(val zh: String) {
     EASY("简单"),
     NORMAL("普通"),
     HARD("困难"),
+    SUPER("超级"),
 }
 
 /** How much work a searching bot may do for one decision. */
@@ -37,6 +38,7 @@ object Bots {
         Difficulty.EASY -> EasyBot()
         Difficulty.NORMAL -> NormalBot()
         Difficulty.HARD -> HardBot()
+        Difficulty.SUPER -> SuperBot()
     }
 
     /** Seed for [seat]'s decision in [state]; changes with every action so decisions don't repeat. */

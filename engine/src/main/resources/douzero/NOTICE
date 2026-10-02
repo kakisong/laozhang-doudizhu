@@ -1,0 +1,24 @@
+DouZero offline model assets
+
+Original project: https://github.com/kwai/DouZero
+Developed by AI Platform, Kwai Inc. (Kuaishou).
+Authors: Daochen Zha, Jingru Xie, Wenye Ma, Sheng Zhang, Xiangru Lian,
+Xia Hu, Ji Liu.
+Paper: DouZero: Mastering DouDizhu with Self-Play Deep Reinforcement Learning,
+Proceedings of the 38th International Conference on Machine Learning (2021).
+
+Code reference revision: 718a5c920bf3361e34178a38f3b80458e176b351
+Checkpoint mirror: https://huggingface.co/palemoky/douzero-baselines
+Mirror revision: 57b3914046c2a0877016b8b8830fd07cf5b0ba08
+Original checkpoints: baselines/douzero_WP/landlord.ckpt,
+baselines/douzero_WP/landlord_up.ckpt,
+baselines/douzero_WP/landlord_down.ckpt.
+
+Licensed under Apache License, Version 2.0. A full copy is in LICENSE.
+
+Modifications by this application: the original PyTorch models were exported to
+ONNX opset 17. The common history LSTM is evaluated once per inference batch and
+expanded for that legal action batch. Original network weights are unchanged. The bundled
+application encodes public observations and supplies only its own legal moves.
+Export scripts, checkpoint URLs, hashes and parity validation are documented in
+docs/offline-ai.md and manifest.json.

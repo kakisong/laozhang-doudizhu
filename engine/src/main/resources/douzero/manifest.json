@@ -1,0 +1,34 @@
+{
+  "sourceRevision": "718a5c920bf3361e34178a38f3b80458e176b351",
+  "mirrorRevision": "57b3914046c2a0877016b8b8830fd07cf5b0ba08",
+  "objective": "WP",
+  "opset": 17,
+  "exportVersions": {
+    "torch": "2.8.0",
+    "onnx": "1.19.1",
+    "onnxruntime": "1.23.2"
+  },
+  "models": {
+    "landlord": {
+      "checkpointUrl": "https://huggingface.co/palemoky/douzero-baselines/resolve/57b3914046c2a0877016b8b8830fd07cf5b0ba08/checkpoints/douzero_WP/landlord.ckpt",
+      "checkpointSha256": "132e26479fcb69f457ddbf1ad32a7bdc3aa73cde80a28cc91f29a62c6075955a",
+      "onnxSha256": "ecd88af1779bc3289ace77a4419640974a09f3765c0935d8460666d9342223e3",
+      "bytes": 5837152,
+      "maxParityAbsoluteError": 5.513429641723633e-07
+    },
+    "landlord_up": {
+      "checkpointUrl": "https://huggingface.co/palemoky/douzero-baselines/resolve/57b3914046c2a0877016b8b8830fd07cf5b0ba08/checkpoints/douzero_WP/landlord_up.ckpt",
+      "checkpointSha256": "b849ea518e66f088d635d3a29956da880f7b5ca89fabc5f70fc356c106ca6a15",
+      "onnxSha256": "22efbdfead75931d2118fc3a9b8718ff49425a107d2fa09e2a44042dae6f8e4e",
+      "bytes": 6064483,
+      "maxParityAbsoluteError": 1.3560056686401367e-06
+    },
+    "landlord_down": {
+      "checkpointUrl": "https://huggingface.co/palemoky/douzero-baselines/resolve/57b3914046c2a0877016b8b8830fd07cf5b0ba08/checkpoints/douzero_WP/landlord_down.ckpt",
+      "checkpointSha256": "964720faf583f4905662c94aaf73b1a97352b76ae3686fcc949beabbacdd95d1",
+      "onnxSha256": "cd2d8516ee6bc0c826053abb7c63185d337b9fc0ff0dbc3ffb4d19e9a1027c5a",
+      "bytes": 6064485,
+      "maxParityAbsoluteError": 3.5762786865234375e-07
+    }
+  }
+}

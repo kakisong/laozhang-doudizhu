@@ -3,6 +3,7 @@ package com.kaynzhang.doudizhu.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,6 +35,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -138,18 +142,50 @@ fun LobbyScreen(
                     LobbyNav("玩法说明", UiIcon.RULES, "btn_rules", onRules)
                 }
                 Spacer(Modifier.height(if (short) 10.dp else 18.dp))
-                Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(if (narrow) 10.dp else 16.dp)) {
-                    for (room in Room.entries) {
-                        RoomCard(
-                            room = room, affordable = d.profile.coins >= room.minCoins,
-                            compact = narrow || short, short = short,
-                            onClick = { onEnterRoom(room) }, modifier = Modifier.weight(1f),
-                        )
-                    }
-                }
+                LobbyRooms(d.profile.coins, narrow, short, onEnterRoom, Modifier.weight(1f))
             }
         }
         MessageHost(vm.messages, Modifier.align(Alignment.TopCenter).padding(top = 24.dp))
+    }
+}
+
+/** Keep room names and entry requirements readable; smaller screens can scroll to all four. */
+@Composable
+internal fun LobbyRooms(
+    coins: Long,
+    compact: Boolean,
+    short: Boolean,
+    onEnterRoom: (Room) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val fontScale = LocalDensity.current.fontScale
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val gap = if (compact) 10.dp else 16.dp
+        val minimumWidth = if (fontScale > 1.12f) 192.dp else 176.dp
+        val scrolls = maxWidth < minimumWidth * Room.entries.size + gap * (Room.entries.size - 1)
+        val cardWidth = if (scrolls) minimumWidth else (maxWidth - gap * (Room.entries.size - 1)) / Room.entries.size
+        Column(Modifier.fillMaxSize()) {
+            Row(
+                Modifier.weight(1f).fillMaxWidth().testTag("room_list")
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(gap),
+            ) {
+                for (room in Room.entries) {
+                    RoomCard(
+                        room, affordable = coins >= room.minCoins,
+                        compact = compact || scrolls, short = short,
+                        onClick = { onEnterRoom(room) }, modifier = Modifier.width(cardWidth),
+                    )
+                }
+            }
+            if (scrolls) {
+                Text(
+                    "左右滑动选择 · 4 个场次", color = DdzColors.Cream.copy(alpha = 0.72f),
+                    fontSize = 13.sp, lineHeight = 18.sp,
+                    modifier = Modifier.padding(top = 5.dp).testTag("room_scroll_hint"),
+                )
+            }
+        }
     }
 }
 
@@ -183,11 +219,15 @@ private fun RoomCard(
         Room.NOVICE -> Color(0xFF254D40)
         Room.NORMAL -> Color(0xFF204437)
         Room.MASTER -> Color(0xFF1C3B31)
+        Room.SUPER -> Color(0xFF363C30)
     }
     val ink = if (affordable) DdzColors.Cream else DdzColors.Cream.copy(alpha = 0.65f)
     val fontScale = LocalDensity.current.fontScale
     BoxWithConstraints(
         modifier.fillMaxHeight().testTag("room_${room.name.lowercase()}")
+            .semantics {
+                contentDescription = "${room.title}，${if (room == Room.SUPER) "离线 AI" else room.difficulty.zh}对手，底分 ${room.baseScore}，入场需要 ${room.minCoins} 金币"
+            }
             .background(Brush.verticalGradient(listOf(top, Color(0xFF132D24))), shape)
             .border(1.dp, DdzColors.Gold.copy(alpha = if (affordable) 0.32f else 0.13f), shape)
             .clickable(role = Role.Button, onClick = { clickSound(); onClick() }),
@@ -206,10 +246,10 @@ private fun RoomCard(
         ) {
             Column {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("0${room.ordinal + 1}", color = DdzColors.Gold.copy(alpha = 0.75f), fontSize = 13.sp, lineHeight = 18.sp, letterSpacing = 2.sp)
+                    Text("0${room.ordinal + 1} / 04", color = DdzColors.Gold.copy(alpha = 0.75f), fontSize = 13.sp, lineHeight = 18.sp, letterSpacing = 2.sp)
                     Spacer(Modifier.weight(1f))
                     LineIcon(
-                        if (room == Room.MASTER) UiIcon.CROWN else UiIcon.CARDS,
+                        if (room == Room.MASTER || room == Room.SUPER) UiIcon.CROWN else UiIcon.CARDS,
                         Modifier.size(if (compactCard) 18.dp else 24.dp), DdzColors.Gold.copy(alpha = 0.7f),
                     )
                 }
@@ -221,16 +261,20 @@ private fun RoomCard(
                 )
             }
             Column {
-                Text("底分", color = ink.copy(alpha = 0.7f), fontSize = 14.sp, lineHeight = 18.sp)
-                Text(
-                    formatCoins(room.baseScore), color = if (affordable) DdzColors.Gold else ink,
-                    fontWeight = FontWeight.Medium, maxLines = 1,
-                    lineHeight = if (compactCard) 34.sp else 44.sp,
-                    autoSize = TextAutoSize.StepBased(minFontSize = 23.sp, maxFontSize = if (compactCard) 28.sp else 38.sp),
-                )
+                if (!short) Text("底分", color = ink.copy(alpha = 0.7f), fontSize = 14.sp, lineHeight = 18.sp)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    if (short) Text("底分", color = ink.copy(alpha = 0.7f), fontSize = 14.sp, lineHeight = 18.sp)
+                    Text(
+                        formatCoins(room.baseScore), color = if (affordable) DdzColors.Gold else ink,
+                        fontWeight = FontWeight.Medium, maxLines = 1,
+                        lineHeight = if (compactCard) 34.sp else 44.sp,
+                        autoSize = TextAutoSize.StepBased(minFontSize = 23.sp, maxFontSize = if (compactCard) 28.sp else 38.sp),
+                    )
+                }
                 Spacer(Modifier.height(if (compactCard) 3.dp else 6.dp))
                 Text(
-                    if (tightCard) room.difficulty.zh else "对手 · ${room.difficulty.zh}",
+                    if (room == Room.SUPER) "对手 · 离线 AI" else if (tightCard) room.difficulty.zh else "对手 · ${room.difficulty.zh}",
+                    modifier = Modifier.fillMaxWidth(),
                     color = ink, fontSize = if (tightCard) 16.sp else if (compactCard) 14.sp else 15.sp,
                     lineHeight = if (tightCard) 22.sp else 20.sp, maxLines = 1,
                 )

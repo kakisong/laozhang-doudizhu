@@ -21,6 +21,10 @@ dependencies {
     api(libs.kotlinx.serialization.json)
     api(libs.kotlinx.coroutines.core)
 
+    // The Java API is shared; Android supplies its own native runtime through the app module.
+    compileOnly(libs.onnxruntime.jvm)
+    testImplementation(libs.onnxruntime.jvm)
+
     testImplementation(kotlin("test"))
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)

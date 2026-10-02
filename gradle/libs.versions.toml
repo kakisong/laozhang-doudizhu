@@ -12,8 +12,11 @@ junitBom = "6.1.3"
 junit4 = "4.13.2"
 androidxTestExt = "1.3.0"
 androidxTestRunner = "1.7.0"
+onnxruntime = "1.23.2"
 
 [libraries]
+onnxruntime-jvm = { module = "com.microsoft.onnxruntime:onnxruntime", version.ref = "onnxruntime" }
+onnxruntime-android = { module = "com.microsoft.onnxruntime:onnxruntime-android", version.ref = "onnxruntime" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
