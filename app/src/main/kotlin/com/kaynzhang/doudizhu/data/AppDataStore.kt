@@ -65,7 +65,7 @@ class AppDataStore(context: Context, private val scope: CoroutineScope) {
     }
 
     suspend fun updateSettings(transform: (Settings) -> Settings) {
-        store.updateData { it.copy(settings = transform(it.settings)) }
+        store.updateData { it.copy(settings = transform(it.settings).withValidVolumes()) }
     }
 
     suspend fun updateAvatar(id: String) {
@@ -92,7 +92,7 @@ class AppDataStore(context: Context, private val scope: CoroutineScope) {
     }
 }
 
-private object AppDataSerializer : Serializer<AppData> {
+internal object AppDataSerializer : Serializer<AppData> {
     private val json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
@@ -103,13 +103,14 @@ private object AppDataSerializer : Serializer<AppData> {
     override suspend fun readFrom(input: InputStream): AppData {
         val text = input.readBytes().decodeToString()
         if (text.isBlank()) return defaultValue
-        val data = try {
+        val decoded = try {
             json.decodeFromString(AppData.serializer(), text)
         } catch (e: SerializationException) {
             throw CorruptionException("unreadable app data", e)
         } catch (e: IllegalArgumentException) {
             throw CorruptionException("unreadable app data", e)
         }
+        val data = decoded.copy(settings = decoded.settings.withValidVolumes())
         // A save from another schema can't be resumed safely; keep the profile, drop the table.
         return if (data.savedTable != null && data.savedTable.state.schema != GameState.SCHEMA) {
             Log.w("AppDataStore", "dropping saved table with schema ${data.savedTable.state.schema}")
@@ -120,6 +121,7 @@ private object AppDataSerializer : Serializer<AppData> {
     }
 
     override suspend fun writeTo(t: AppData, output: OutputStream) {
-        output.write(json.encodeToString(AppData.serializer(), t).encodeToByteArray())
+        val data = t.copy(settings = t.settings.withValidVolumes())
+        output.write(json.encodeToString(AppData.serializer(), data).encodeToByteArray())
     }
 }

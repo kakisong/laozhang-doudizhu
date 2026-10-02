@@ -66,7 +66,16 @@ data class Settings(
     val cardCounter: Boolean = true,
     /** Slow by default: most players are older. Saved settings keep their own value. */
     val speed: Speed = Speed.SLOW,
-)
+    val music: Boolean = true,
+    val musicVolume: Int = 25,
+) {
+    /** Keep imported saves and all persisted changes within the percentage range shown in settings. */
+    internal fun withValidVolumes(): Settings = copy(
+        soundVolume = soundVolume.coerceIn(0, 100),
+        voiceVolume = voiceVolume.coerceIn(0, 100),
+        musicVolume = musicVolume.coerceIn(0, 100),
+    )
+}
 
 @Serializable
 data class Stats(

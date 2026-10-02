@@ -9,8 +9,13 @@ import android.os.Looper
 import android.os.SystemClock
 import com.kaynzhang.doudizhu.data.Settings
 
-/** Shares audio focus between effects and voices; interruptions discard stale playback. */
-class AppAudio(context: Context, val sound: SoundManager, val voice: VoiceAnnouncer) {
+/** Shares focus between the music loop, effects and voices; interruptions discard stale speech. */
+class AppAudio(
+    context: Context,
+    val sound: SoundManager,
+    val voice: VoiceAnnouncer,
+    val music: BackgroundMusic = BackgroundMusic(context),
+) {
     private val manager = context.getSystemService(AudioManager::class.java)
     private val handler = Handler(Looper.getMainLooper())
     private var foregroundOwner: Any? = null
@@ -19,51 +24,67 @@ class AppAudio(context: Context, val sound: SoundManager, val voice: VoiceAnnoun
     private var interrupted = false
     private var transientInterruption = false
     private var focused = false
+    private var request: AudioFocusRequest? = null
     private var effectUntil = 0L
     private val releaseFocus = Runnable {
-        if (!voice.busy && SystemClock.uptimeMillis() >= effectUntil) abandonFocus() else scheduleRelease()
+        if (!music.isPlaying && !voice.busy && SystemClock.uptimeMillis() >= effectUntil) abandonFocus()
+        else scheduleRelease()
     }
-    private val request: AudioFocusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
-        .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
-        .setWillPauseWhenDucked(true)
-        .setOnAudioFocusChangeListener({ change ->
-            when (change) {
-                AudioManager.AUDIOFOCUS_GAIN -> {
-                    focused = true
-                    interrupted = false
-                    transientInterruption = false
-                    updateActive()
-                    scheduleRelease()
+
+    private fun createFocusRequest(): AudioFocusRequest {
+        val gain = desiredFocusGain()
+        lateinit var created: AudioFocusRequest
+        created = AudioFocusRequest.Builder(gain)
+            .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME)
+                .setContentType(if (gain == AudioManager.AUDIOFOCUS_GAIN) AudioAttributes.CONTENT_TYPE_MUSIC
+                    else AudioAttributes.CONTENT_TYPE_SPEECH).build())
+            .setWillPauseWhenDucked(true)
+            .setOnAudioFocusChangeListener({ change ->
+                // Abandoned requests can still have a callback queued on the main thread.
+                if (request !== created) return@setOnAudioFocusChangeListener
+                when (change) {
+                    AudioManager.AUDIOFOCUS_GAIN -> {
+                        focused = true
+                        interrupted = false
+                        transientInterruption = false
+                        updateActive()
+                        scheduleRelease()
+                    }
+                    AudioManager.AUDIOFOCUS_LOSS -> {
+                        focused = false
+                        interrupted = true
+                        transientInterruption = false
+                        handler.removeCallbacks(releaseFocus)
+                        updateActive()
+                        abandonFocus()
+                    }
+                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
+                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                        focused = false
+                        interrupted = true
+                        transientInterruption = true
+                        handler.removeCallbacks(releaseFocus)
+                        updateActive()
+                    }
                 }
-                AudioManager.AUDIOFOCUS_LOSS -> {
-                    focused = false
-                    interrupted = true
-                    transientInterruption = false
-                    handler.removeCallbacks(releaseFocus)
-                    updateActive()
-                    manager.abandonAudioFocusRequest(request)
-                }
-                AudioManager.AUDIOFOCUS_LOSS_TRANSIENT,
-                AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
-                    focused = false
-                    interrupted = true
-                    transientInterruption = true
-                    handler.removeCallbacks(releaseFocus)
-                    updateActive()
-                }
-            }
-        }, handler).build()
+            }, handler).build()
+        return created
+    }
 
     init {
         sound.beforePlay = ::obtainFocus
         voice.beforePlay = ::obtainFocus
+        music.beforePlay = ::obtainFocus
+        music.onPlayingChanged = { playing ->
+            if (playing) handler.removeCallbacks(releaseFocus) else scheduleRelease()
+        }
         sound.onPlayback = { duration ->
             effectUntil = maxOf(effectUntil, SystemClock.uptimeMillis() + duration)
             scheduleRelease()
         }
         voice.onSpeakingChanged = { speaking ->
             sound.setVoiceDucking(speaking)
+            music.setVoiceDucking(speaking)
             if (speaking) handler.removeCallbacks(releaseFocus) else scheduleRelease()
         }
         updateActive()
@@ -74,6 +95,13 @@ class AppAudio(context: Context, val sound: SoundManager, val voice: VoiceAnnoun
         sound.volume = settings.soundVolume.coerceIn(0, 100) / 100f
         voice.enabled = settings.voice
         voice.volume = settings.voiceVolume.coerceIn(0, 100) / 100f
+        music.volume = settings.musicVolume.coerceIn(0, 100) / 100f
+        music.enabled = settings.music
+        if (focused && request?.focusGain != desiredFocusGain() &&
+            (music.isPlaying || voice.busy || SystemClock.uptimeMillis() < effectUntil)) {
+            obtainFocus()
+        }
+        scheduleRelease()
     }
 
     fun setForeground(owner: Any, value: Boolean) = onMain {
@@ -83,6 +111,7 @@ class AppAudio(context: Context, val sound: SoundManager, val voice: VoiceAnnoun
                 // Its audio must not inherit the old table's pause or queued announcements.
                 sound.stop()
                 voice.stop()
+                music.active = false
                 abandonFocus()
                 foregroundOwner = owner
                 paused = false
@@ -100,49 +129,74 @@ class AppAudio(context: Context, val sound: SoundManager, val voice: VoiceAnnoun
     fun setPaused(owner: Any, value: Boolean) = onMain {
         if (foregroundOwner !== owner) return@onMain
         paused = value
-        if (!value) interrupted = false
+        if (!value && !transientInterruption) interrupted = false
         updateActive()
-        if (value) abandonFocus()
+        if (value) {
+            abandonFocus()
+            // This request no longer receives gain callbacks; resume must make a fresh request.
+            transientInterruption = false
+        }
     }
 
     fun stop(owner: Any) = onMain {
         if (foregroundOwner !== owner) return@onMain
         sound.stop()
         voice.stop()
-        abandonFocus()
+        // Changing tables clears announcements without restarting the continuous music loop.
+        if (!music.isPlaying && !transientInterruption) abandonFocus()
     }
 
     /** A new tap may reclaim permanently lost focus; temporary call interruptions wait for gain. */
     fun onUserInteraction(owner: Any) = onMain {
         if (foregroundOwner !== owner) return@onMain
         if (interrupted && !transientInterruption) { interrupted = false; updateActive() }
+        if (!interrupted) music.resume()
     }
 
     private fun updateActive() {
         val active = foreground && !paused && !interrupted
         sound.active = active
         voice.active = active
+        music.active = active
     }
 
     private fun obtainFocus(): Boolean {
         if (!foreground || paused || interrupted) return false
         handler.removeCallbacks(releaseFocus)
-        if (!focused) focused = manager.requestAudioFocus(request) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        if (request?.focusGain != desiredFocusGain()) abandonFocus(clearEffects = false)
+        if (!focused) {
+            val candidate = request ?: createFocusRequest().also { request = it }
+            focused = manager.requestAudioFocus(candidate) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+            if (!focused) {
+                manager.abandonAudioFocusRequest(candidate)
+                request = null
+                // Switching from speech to music may already have abandoned a granted request.
+                // Denial must also silence any speech/effects still using that previous focus.
+                interrupted = true
+                transientInterruption = false
+                updateActive()
+            }
+        }
         if (focused) scheduleRelease()
         return focused
     }
 
     private fun scheduleRelease() {
         handler.removeCallbacks(releaseFocus)
-        if (interrupted) return
+        if (interrupted || music.isPlaying) return
         handler.postDelayed(releaseFocus, (effectUntil - SystemClock.uptimeMillis()).coerceAtLeast(0) + 250)
     }
 
-    private fun abandonFocus() {
+    private fun desiredFocusGain(): Int = if (music.enabled && music.volume > 0f)
+        AudioManager.AUDIOFOCUS_GAIN else AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+
+    private fun abandonFocus(clearEffects: Boolean = true) {
         handler.removeCallbacks(releaseFocus)
-        manager.abandonAudioFocusRequest(request)
+        val old = request
+        request = null
+        if (old != null) manager.abandonAudioFocusRequest(old)
         focused = false
-        effectUntil = 0
+        if (clearEffects) effectUntil = 0
     }
 
     private fun onMain(block: () -> Unit) {

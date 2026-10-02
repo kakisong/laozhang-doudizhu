@@ -1,7 +1,7 @@
 # 老张斗地主
 
 一款完全离线的安卓斗地主游戏，采用欢乐斗地主规则（叫地主 / 抢地主 + 加倍），支持四档 AI 难度。
-不联网、不申请任何权限，语音与音效全部离线播放。
+不联网、不申请任何权限，背景音乐、语音与音效全部离线播放。
 
 当前版本：**2.0.0**（Android `versionCode = 5`）。更新说明见 [CHANGELOG.md](CHANGELOG.md)。
 
@@ -38,11 +38,13 @@
   - 记牌器。
   - 炸弹闪光震屏、王炸火箭、飞机、春天等特效。
 - **声音**：
+  - 内置原创轻快音乐，在大厅和牌桌循环播放，默认音量 25%；可单独关闭、调节音量。暂停游戏、切到后台或临时失去音频焦点时暂停，恢复后从原位置继续。
   - 三种专门生成的自然中文人声：温暖男声、沉稳男声、清亮女声，按三个座位独立播放。报牌、叫抢、加倍、报单报双、春天、结算等语音内置在安装包中，不需要联网或安装系统中文语音。
   - 22 类由代码合成的音效，包含选牌、撤选、提示、无效出牌、发牌、顺子、连对、飞机、炸弹、王炸、轮到你与胜负结算；常用操作轻柔，重要事件更有辨识度。
-  - 语音与音效分别开关、调整音量，在设置中可试听三种人声；说话时自动降低音效音量。
+  - 音乐、语音与音效分别开关、调整音量，在设置中可试听三种人声；说话时自动降低音乐和音效音量。
   - 同一步中的报牌、剩牌提醒与结果按顺序播放，电脑会等待语音结束；暂停、静音、切到后台和离开牌桌立即清掉旧声音，返回后不补播过时台词。
   - 素材来源、生成与验证见 [docs/audio-assets.md](docs/audio-assets.md)，可用 `scripts/generate_voices.py` 重新生成。
+  - 背景音乐的原创素材说明和复现方法见 [docs/music-assets.md](docs/music-assets.md)，可用 `scripts/generate_music.py` 重新生成。
 - **成长与存档**：
   - 金币、四个场次、救济金（金币少于 1,000 时可领 3,000，不限次数）、战绩统计。
   - 每日对局统计：按结算当天的本地日期保存局数、胜场、胜率和净金币；战绩页显示今日概览与近七日记录，保留累计战绩。
@@ -60,8 +62,9 @@ engine/   Kotlin/JVM 模块：规则、对局状态机、AI。不依赖 Android�
 app/      Android 应用（Jetpack Compose）
   game/   GameViewModel（回合调度、节奏、托管、存档）、TableUi（界面状态）
   ui/     牌桌（统一坐标的卡牌精灵、手势、特效）、大厅、设置、战绩、玩法说明
-  audio/  SoundSynth（PCM 合成）、SoundManager（SoundPool）、VoiceAnnouncer（离线人声队列）、AppAudio（音频焦点与混音）、GameAudioPlanner（事件顺序）
+  audio/  SoundSynth（PCM 合成）、SoundManager（SoundPool）、VoiceAnnouncer（离线人声队列）、BackgroundMusic（音乐循环）、AppAudio（音频焦点与混音）、GameAudioPlanner（事件顺序）
   src/main/assets/voices/  三席中文人声与台词/时长目录
+  src/main/assets/music/   原创离线背景音乐
   data/   AppDataStore（DataStore，单个 JSON 文档，结算与清除存档原子完成）
   src/debug/DebugHooks.kt  测试钩子，只编译进 debug 包
 docs/RULES.md  规则说明
@@ -95,7 +98,7 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
 
 ```bash
 ./gradlew :engine:test                     # 70 项测试，包含真实模型对拍与完整对局
-./gradlew :app:testDebugUnitTest            # 44 项测试，包含布局、存档数据和音频逻辑
+./gradlew :app:testDebugUnitTest            # 包含布局、存档数据和音频逻辑
 ./gradlew :engine:slowTest                  # AI 强度基准、叫牌模型校准（较慢）
 ./gradlew :app:lintDebug
 ./gradlew :app:connectedDebugAndroidTest    # 在模拟器或手机上跑 Compose 冒烟测试
@@ -164,5 +167,4 @@ debug 包会把 Compose 的 testTag 暴露为 resource-id，可以用 `uiautomat
 ## 以后可以扩展
 
 - 其他玩法：叫分模式、不洗牌模式、癞子模式、明牌。
-- 背景音乐。
 - AI 继续增强：更新 DouZero 模型，或者在采样时根据对手的出牌推断手牌分布。

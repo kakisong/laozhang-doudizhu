@@ -1,0 +1,37 @@
+{
+  "title": "欢乐牌桌",
+  "path": "music/table_theme.m4a",
+  "style": "Cheerful pentatonic plucked strings/soft marimba, bouncing bass and light percussion",
+  "composition": "Original score and procedural synthesis in scripts/generate_music.py",
+  "provenance": "Original project asset; no third-party music, recordings, or samples",
+  "seed": 20261003,
+  "bpm": 114,
+  "bars": 24,
+  "sampleRate": 44100,
+  "channels": 2,
+  "codec": "AAC-LC",
+  "targetBitrate": 96000,
+  "encoder": "afconvert",
+  "encodedBytes": 576083,
+  "sha256": "8034001d9b17ce783964b5d3943ac0847f465c6e560adc1b15caf42e7c8dbf04",
+  "pcmSha256": "d35ab1cee61d5dcd5f7a8ca0134aeb78ad8f6ae4e7c4e279f76ba36748b872a8",
+  "source": {
+    "frames": 2228211,
+    "durationSeconds": 50.526327,
+    "rmsDbfs": -22.0,
+    "peakDbfs": -9.734,
+    "clippedSamples": 0,
+    "seamStepDbfs": -63.945,
+    "maximumStepDbfs": -28.784
+  },
+  "decoded": {
+    "frames": 2228211,
+    "durationSeconds": 50.526327,
+    "rmsDbfs": -22.004,
+    "peakDbfs": -9.664,
+    "clippedSamples": 0,
+    "seamStepDbfs": -59.428,
+    "maximumStepDbfs": -28.871
+  },
+  "roundTripSnrDb": 32.734
+}

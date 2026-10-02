@@ -136,6 +136,13 @@ fun SettingsScreen(vm: GameViewModel, onBack: () -> Unit) {
             Spacer(Modifier.height(20.dp))
             Text("声音与牌桌", color = DdzColors.Gold, fontSize = 16.sp, lineHeight = 22.sp, fontWeight = FontWeight.Medium)
             Spacer(Modifier.height(6.dp))
+            ToggleRow("背景音乐", "内置轻快音乐，离线循环播放", "music", s.music) { v ->
+                vm.updateSettings { it.copy(music = v) }
+            }
+            VolumeRow("音乐音量", s.musicVolume, s.music, "slider_music_volume", onCommit = { v ->
+                vm.updateSettings { it.copy(musicVolume = v) }
+            })
+            Hairline()
             ToggleRow("音效", "选牌、出牌与轮到你的提示音", "音效（含轮到你时的提示音）", s.sound) { v ->
                 vm.updateSettings { it.copy(sound = v) }
             }
@@ -157,7 +164,7 @@ fun SettingsScreen(vm: GameViewModel, onBack: () -> Unit) {
                         tag = "btn_preview_voice_$seat", fontSize = 16)
                 }
             }
-            Text("报牌时音效会自动减轻，让人声更清楚", Modifier.padding(top = 10.dp, bottom = 14.dp),
+            Text("报牌时音乐和音效会自动减轻，让人声更清楚", Modifier.padding(top = 10.dp, bottom = 14.dp),
                 color = DdzColors.TextMuted, fontSize = 15.sp, lineHeight = 22.sp)
             Hairline()
             ToggleRow("记牌器", "显示尚未打出的牌", "记牌器", s.cardCounter) { v ->
