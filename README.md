@@ -3,7 +3,7 @@
 一款完全离线的安卓斗地主游戏，采用欢乐斗地主规则（叫地主 / 抢地主 + 加倍），支持四档 AI 难度。
 不联网、不申请任何权限，背景音乐、语音与音效全部离线播放。
 
-当前版本：**2.0.0**（Android `versionCode = 5`）。更新说明见 [CHANGELOG.md](CHANGELOG.md)。
+当前版本：**2.0.1**（Android `versionCode = 6`）。更新说明见 [CHANGELOG.md](CHANGELOG.md)。
 
 ## 功能
 
@@ -91,7 +91,7 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
 ```
 
 正式发布前需要生成自己的签名密钥（不要提交到仓库），并替换 `app/build.gradle.kts` 里 release 的 `signingConfig`。
-仓库内已包含三个 ONNX 模型，构建时无需重新转换。2.0.0 的通用 release APK
+仓库内已包含三个 ONNX 模型，构建时无需重新转换。2.0.1 的通用 release APK
 约 51 MB，包含全部支持架构的 CPU 运行库；安装后的首次对局也不需要联网下载。
 
 ## 测试
@@ -164,7 +164,4 @@ debug 包会把 Compose 的 testTag 暴露为 resource-id，可以用 `uiautomat
 模型真实离线对局（禁止回退），以及四个场次在短屏、大字号下的可达性和文字完整性。
 定向运行方法见 [离线 AI 验证说明](docs/offline-ai.md#重新导出与验证)。
 
-## 以后可以扩展
-
-- 其他玩法：叫分模式、不洗牌模式、癞子模式、明牌。
-- AI 继续增强：更新 DouZero 模型，或者在采样时根据对手的出牌推断手牌分布。
+2.0.1 的 Android 测试还覆盖背景音乐循环、暂停恢复、报牌时降低音量，以及音乐开关和音量独立保存、界面重建后保留设置。
