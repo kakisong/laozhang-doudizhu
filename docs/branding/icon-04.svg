@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="title" style="color:#E4C994">
+  <title id="title">棋牌印章</title>
+  <!-- A rounded seal and a hand-drawn geometric 斗 glyph evoke a familiar Chinese card room; the glyph is vector geometry rather than a font. -->
+  <rect width="100" height="100" rx="22" fill="#102B25"/>
+  <rect x="28" y="28" width="44" height="44" rx="8" fill="#853441" stroke="currentColor" stroke-width="3"/>
+  <g id="dou-seal" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M37 37 42 40 M36 47 41 50 M55 35 V66 M35 57 H65"/>
+  </g>
+</svg>

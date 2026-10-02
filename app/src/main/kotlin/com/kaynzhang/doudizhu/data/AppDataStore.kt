@@ -19,6 +19,7 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import java.io.InputStream
 import java.io.OutputStream
+import java.time.LocalDate
 
 /**
  * Single source of persisted truth. All writes go through [DataStore.updateData], so each is atomic;
@@ -57,21 +58,19 @@ class AppDataStore(context: Context, private val scope: CoroutineScope) {
         store.updateData { it.copy(savedTable = null) }
     }
 
-    /** Credits the human, records stats and drops the saved table in one write. */
+    /** Credits coins and total/daily stats atomically on the device's local settlement date. */
     suspend fun settle(state: GameState, result: GameResult) {
-        store.updateData { d ->
-            if (d.lastSettledSeed == state.seed) return@updateData d
-            d.copy(
-                profile = d.profile.copy(coins = (d.profile.coins + result.delta[0]).coerceAtLeast(0)),
-                stats = d.stats.record(result),
-                savedTable = null,
-                lastSettledSeed = state.seed,
-            )
-        }
+        val dayKey = LocalDate.now().toString()
+        store.updateData { it.settled(state.seed, result, dayKey) }
     }
 
     suspend fun updateSettings(transform: (Settings) -> Settings) {
         store.updateData { it.copy(settings = transform(it.settings)) }
+    }
+
+    suspend fun updateAvatar(id: String) {
+        val avatarId = BuiltInPortraits.resolve(id).id
+        store.updateData { it.copy(profile = it.profile.copy(avatarId = avatarId)) }
     }
 
     /** Grants 救济金 when the player is nearly broke (no daily limit); returns true if coins were added. */
@@ -87,7 +86,9 @@ class AppDataStore(context: Context, private val scope: CoroutineScope) {
 
     suspend fun resetAll() {
         pendingTable.value = null
-        store.updateData { AppData(settings = it.settings) }
+        store.updateData {
+            AppData(profile = it.profile.copy(coins = Profile.STARTING_COINS), settings = it.settings)
+        }
     }
 }
 

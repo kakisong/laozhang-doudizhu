@@ -1,50 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Two fanned cards (spade and heart) inside the 66dp adaptive-icon safe zone. -->
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-
-    <group
-        android:pivotX="54"
-        android:pivotY="80"
-        android:rotation="-14"
-        android:translateX="-7">
-        <path
-            android:fillColor="#FFFDF7"
-            android:strokeColor="#E0D6C2"
-            android:strokeWidth="1"
-            android:pathData="M40,29 H68 A4,4 0 0 1 72,33 V75 A4,4 0 0 1 68,79 H40 A4,4 0 0 1 36,75 V33 A4,4 0 0 1 40,29 Z" />
-        <group
-            android:scaleX="0.2"
-            android:scaleY="0.2"
-            android:translateX="44"
-            android:translateY="44">
-            <path
-                android:fillColor="#212121"
-                android:pathData="M50,5 C62,25 92,40 92,62 C92,77 81,86 69,86 C61,86 55,82 52,77 C53,85 56,91 62,95 L38,95 C44,91 47,85 48,77 C45,82 39,86 31,86 C19,86 8,77 8,62 C8,40 38,25 50,5 Z" />
-        </group>
-    </group>
-
-    <group
-        android:pivotX="54"
-        android:pivotY="80"
-        android:rotation="12"
-        android:translateX="7">
-        <path
-            android:fillColor="#FFFDF7"
-            android:strokeColor="#E0D6C2"
-            android:strokeWidth="1"
-            android:pathData="M40,29 H68 A4,4 0 0 1 72,33 V75 A4,4 0 0 1 68,79 H40 A4,4 0 0 1 36,75 V33 A4,4 0 0 1 40,29 Z" />
-        <group
-            android:scaleX="0.2"
-            android:scaleY="0.2"
-            android:translateX="44"
-            android:translateY="44">
-            <path
-                android:fillColor="#D32F2F"
-                android:pathData="M50,92 C22,68 5,52 5,33 C5,18 17,7 30,7 C39,7 46,12 50,20 C54,12 61,7 70,7 C83,7 95,18 95,33 C95,52 78,68 50,92 Z" />
-        </group>
-    </group>
-</vector>
+<!-- A 72dp illustration inside the 108dp adaptive layer, leaving room for launcher masks and motion. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetLeft="16.666667%" android:insetTop="16.666667%"
+    android:insetRight="16.666667%" android:insetBottom="16.666667%">
+    <bitmap android:src="@drawable/ic_launcher_art"
+        android:gravity="fill" android:filter="true" />
+</inset>

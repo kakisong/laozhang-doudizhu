@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="felt">#0E5A3A</color>
-    <color name="icon_background">#B3261E</color>
+    <color name="felt">#102B25</color>
+    <color name="icon_background">#F2D4AC</color>
 
     <!-- The window background matches the table felt so launching never flashes white. -->
     <style name="Theme.Doudizhu" parent="android:Theme.Material.NoActionBar">

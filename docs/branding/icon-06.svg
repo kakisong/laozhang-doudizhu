@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="title" style="color:#E4C994">
+  <title id="title">老张线标</title>
+  <!-- The silver side-part and thick square spectacles become a spare brand monogram; one red heart preserves the playing-card association. -->
+  <rect width="100" height="100" rx="22" fill="#102B25"/>
+  <path d="M29 36 Q27 24 43 28 Q61 20 71 35 L65 38 Q50 31 42 32 Q35 37 29 36 Z" fill="#C5C6B6"/>
+  <g id="spectacles" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round">
+    <rect x="28" y="43" width="18" height="14" rx="3"/>
+    <rect x="54" y="43" width="18" height="14" rx="3"/>
+    <path d="M46 46 H54"/>
+  </g>
+  <path d="M50 75 C45 71 42 69 42 66 C42 62 48 61 50 64 C52 61 58 62 58 66 C58 69 55 71 50 75 Z" fill="#AD303E"/>
+</svg>

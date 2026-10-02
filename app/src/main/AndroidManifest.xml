@@ -2,12 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Fully offline: no permissions. Text-to-speech needs package visibility on Android 11+. -->
-    <queries>
-        <intent>
-            <action android:name="android.intent.action.TTS_SERVICE" />
-        </intent>
-    </queries>
+    <!-- Fully offline: generated voices are bundled; no permissions or TTS service required. -->
 
     <application
         android:name=".DdzApp"
@@ -19,11 +14,13 @@
         android:supportsRtl="false"
         android:theme="@style/Theme.Doudizhu">
 
+        <!-- Repeated launcher/external opens must reuse the current table and its ViewModel. -->
         <!-- Landscape lock still applies to apps in the game category on Android 16+. -->
         <activity
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|uiMode"
             android:exported="true"
+            android:launchMode="singleTask"
             android:screenOrientation="sensorLandscape"
             tools:ignore="DiscouragedApi">
             <intent-filter>

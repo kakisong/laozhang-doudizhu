@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="title" style="color:#FFFCF4">
+  <title id="title">斜侧面简笔画老张持牌</title>
+  <!-- Three-quarter view facing right: unequal perspective spectacles, a visible nose tip, a turned shoulder line, and fingers holding the three-card fan. -->
+  <rect width="100" height="100" rx="22" fill="#102B25"/>
+  <g transform="translate(3.703704 3.703704) scale(0.925926)">
+    <g id="lao-zhang-line" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M31 32 C28 40 31 49 40 51 Q48 52 52 47 L54 43 59 40 56 37 55 32"/>
+      <path d="M33 34 45 32 46 40 34 42 Z M49 31 55 32 56 37 50 39 Z M45 34 H49 M33 36 29 35"/>
+      <path d="M43 45 Q47 48 51 44.5" stroke-width="2.5"/>
+      <path d="M38 51 37 55 M51 48 53 52"/>
+      <path d="M37 55 Q28 55 25 64 Q27 75 43 77 M53 52 Q61 52 66 59 M37 55 Q42 60 48 59 L53 54"/>
+      <path d="M31 62 Q36 72 47 69"/>
+      <path d="M64 58 Q73 65 68 73 Q65 78 61 75"/>
+    </g>
+    <path id="silver-side-part" d="M30 34 C27 25 34 19 43 22 C50 19 58 25 55 32 L50 28 Q43 32 37 27 Q36 32 30 34 Z" fill="#C5C6B6"/>
+    <g id="three-card-fan" fill="#FFFCF4" stroke="#102B25" stroke-width="1.8" stroke-linejoin="round">
+      <rect x="46" y="52" width="12" height="20" rx="2.5" transform="rotate(-16 52 62)"/>
+      <rect x="60" y="52" width="12" height="20" rx="2.5" transform="rotate(16 66 62)"/>
+      <rect x="54" y="50" width="12" height="22" rx="2.5"/>
+    </g>
+    <path d="M60 62 C57 59.5 56.5 58.5 56.5 57 C56.5 54.5 59 54 60 56 C61 54 63.5 54.5 63.5 57 C63.5 58.5 63 59.5 60 62 Z" fill="#AD303E"/>
+    <g id="hands" fill="#102B25" stroke="#E4C994" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M42 68 Q40 64 44 61 Q46 59 47 61 Q48 63 45 65 L48 66 Q50 68 47 70 Q44 72 42 68 Z"/>
+      <path d="M56 72 59 69 Q60 66 63 67 Q65 69 64 72 L67 72 Q69 74 65 76 L59 76 Q55 76 56 72 Z"/>
+    </g>
+    <path d="M60 72 63 72" fill="none" stroke="#E4C994" stroke-width="1.8" stroke-linecap="round"/>
+  </g>
+</svg>

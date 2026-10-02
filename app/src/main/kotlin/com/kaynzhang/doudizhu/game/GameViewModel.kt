@@ -7,8 +7,10 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.kaynzhang.doudizhu.DdzApp
 import com.kaynzhang.doudizhu.audio.Sfx
-import com.kaynzhang.doudizhu.audio.VoiceAnnouncer
+import com.kaynzhang.doudizhu.audio.GameAudioPlanner
+import com.kaynzhang.doudizhu.audio.VoiceLine
 import com.kaynzhang.doudizhu.data.AppData
+import com.kaynzhang.doudizhu.data.BuiltInPortraits
 import com.kaynzhang.doudizhu.data.Persona
 import com.kaynzhang.doudizhu.data.Personas
 import com.kaynzhang.doudizhu.data.Profile
@@ -72,6 +74,9 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     private val store = container.store
     private val sound = container.sound
     private val voice = container.voice
+    private val audio = container.audio
+    /** Stable across this ViewModel's Activity recreation, distinct from a second Activity. */
+    private val audioOwner = Any()
 
     val appData: StateFlow<AppData?> = store.data.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
@@ -79,6 +84,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     private val selection = MutableStateFlow<Set<Card>>(emptySet())
     private val trustee = MutableStateFlow(false)
     private val foreground = MutableStateFlow(true)
+    private val _paused = MutableStateFlow(false)
+    val paused: StateFlow<Boolean> = _paused
     private val dealing = MutableStateFlow(false)
     private val showResult = MutableStateFlow(false)
 
@@ -89,10 +96,13 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     val messages: SharedFlow<String> = _messages
 
     val table: StateFlow<TableUi?> = combine(
-        session, selection, trustee, combine(dealing, showResult, ::Pair), appData,
-    ) { sess, sel, auto, (deal, show), data ->
+        session, selection, trustee, combine(dealing, showResult, _paused, ::Triple), appData,
+    ) { sess, sel, auto, (deal, show, pause), data ->
         if (sess == null || data == null) null
-        else buildTableUi(sess, sel, auto, deal, show, data.profile.coins, data.settings)
+        else buildTableUi(
+            sess, sel, auto, deal, show, data.profile.coins, data.settings,
+            paused = pause, humanAvatarId = data.profile.avatarId,
+        )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val inGame: Boolean get() = session.value != null
@@ -109,6 +119,8 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     private val dealMs get() = if (turbo) 60L else DEAL_MS
 
     private var loop: Job? = null
+    private var soundSequence: Job? = null
+    private var lastFeedbackAt = 0L
     private var bots: List<Bot?> = listOf(null, null, null)
     private val assistant = NormalBot()
     private val hintAnalyzer = HandAnalyzer()
@@ -117,18 +129,23 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     private var hintSeq = -1
     private var hintIndex = 0
     private var dealUntil = 0L
+    private var trusteeSince = 0L
+    private var turnCueSeq = -1
     private val seeds = SecureRandom()
 
     // ---- table lifecycle ----
 
     /** Starts a table in [room]; returns false (with a message) if the player can't afford it. */
     fun enterRoom(room: Room): Boolean {
-        val coins = appData.value?.profile?.coins ?: return false
+        val profile = appData.value?.profile ?: return false
+        val coins = profile.coins
         if (coins < room.minCoins) {
-            _messages.tryEmit("金币不足 ${room.minCoins}，无法进入${room.title}")
+            sound.play(Sfx.ERROR)
+            val relief = if (appData.value?.profile?.canClaimRelief == true) "，可以先领救济金" else ""
+            _messages.tryEmit("金币不够 %,d，进不了%s%s".format(room.minCoins, room.title, relief))
             return false
         }
-        startGame(room, Personas.forRoom(room))
+        startGame(room, Personas.forRoom(room, humanAvatarId = profile.avatarId))
         return true
     }
 
@@ -141,12 +158,14 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     /** Next game at the same table; false if the player can no longer afford the room. */
     fun playAgain(): Boolean {
         val sess = session.value ?: return false
-        val coins = appData.value?.profile?.coins ?: return false
+        val profile = appData.value?.profile ?: return false
+        val coins = profile.coins
         if (coins < sess.room.minCoins) {
+            sound.play(Sfx.ERROR)
             _messages.tryEmit("金币不足，请回大厅领取救济金或换个场次")
             return false
         }
-        startGame(sess.room, Personas.refresh(sess.personas, sess.room))
+        startGame(sess.room, Personas.refresh(sess.personas, sess.room, humanAvatarId = profile.avatarId))
         return true
     }
 
@@ -155,20 +174,29 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         loop?.cancel()
         loop = null
         save()
-        voice.stop()
+        soundSequence?.cancel()
+        audio.stop(audioOwner)
         session.value = null
         selection.value = emptySet()
         trustee.value = false
         showResult.value = false
         dealing.value = false
+        setPaused(false)
     }
 
     fun setForeground(value: Boolean) {
         foreground.value = value
-        if (value) sound.resume() else {
-            sound.pause()
-            voice.stop()
-        }
+        audio.setForeground(audioOwner, value)
+        if (!value) soundSequence?.cancel()
+    }
+
+    /** A local game has no clock to outrun: stop the entire turn scheduler until resumed. */
+    fun setPaused(value: Boolean) {
+        if (value && (session.value == null || session.value?.state?.phase == Phase.FINISHED)) return
+        _paused.value = value
+        audio.setPaused(audioOwner, value)
+        if (value) soundSequence?.cancel()
+        if (value) save()
     }
 
     private fun startGame(room: Room, personas: List<Persona>) {
@@ -181,19 +209,28 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Debug/test entry: a table with a prepared state. */
     internal fun startScripted(room: Room, state: GameState, events: List<GameEvent>) {
-        begin(room, Personas.forRoom(room), state, events)
+        begin(
+            room, Personas.forRoom(room, humanAvatarId = appData.value?.profile?.avatarId ?: BuiltInPortraits.DEFAULT_ID),
+            state, events,
+        )
     }
 
     private fun begin(room: Room, personas: List<Persona>, state: GameState, events: List<GameEvent>) {
         loop?.cancel()
+        soundSequence?.cancel()
+        audio.stop(audioOwner)
+        setPaused(false)
         bots = listOf(null, Bots.create(room.difficulty), Bots.create(room.difficulty))
         selection.value = emptySet()
         trustee.value = keepTrustee
+        trusteeSince = 0
         showResult.value = state.phase == Phase.FINISHED
         dealing.value = false
         dealUntil = 0
         hintSeq = -1
-        session.value = Session(room, personas, state)
+        turnCueSeq = -1
+        val humanAvatarId = appData.value?.profile?.avatarId ?: BuiltInPortraits.DEFAULT_ID
+        session.value = Session(room, Personas.normalize(personas, humanAvatarId), state)
         handleEvents(events, state)
         startLoop()
     }
@@ -202,7 +239,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun startLoop() {
         loop = viewModelScope.launch {
-            combine(session, trustee, foreground, ::Triple).collectLatest { (sess, auto, fg) ->
+            combine(session, trustee, combine(foreground, _paused) { fg, pause -> fg && !pause }, ::Triple).collectLatest { (sess, auto, fg) ->
                 val s = sess?.state ?: return@collectLatest
                 if (!fg || s.phase == Phase.FINISHED) return@collectLatest
                 val wait = dealUntil - SystemClock.uptimeMillis()
@@ -211,13 +248,23 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                 val actors = GameEngine.actors(s)
                 val seat = actors.firstOrNull { it != HUMAN || auto }
                 if (seat == null) {
-                    // Only the human can act. With nothing that beats the table, pass after a moment.
+                    // Only the human can act. With nothing that beats the table, pass after a moment
+                    // (the table explains why); otherwise a soft chime says it's their turn.
                     val trick = s.trick
                     if (s.phase == Phase.PLAYING && trick != null && !MoveGenerator.canBeat(s.hands[HUMAN].counts(), trick)) {
-                        delay(if (turbo) 10 else AUTO_PASS_MS)
+                        delay(if (turbo) 10 else (AUTO_PASS_MS * speedFactor).toLong())
+                        waitForVoice()
                         dispatch(Action.Pass(HUMAN))
+                    } else if (s.phase == Phase.BIDDING || s.phase == Phase.DOUBLING || s.phase == Phase.PLAYING) {
+                        waitForVoice()
+                        cueTurn(s.seq)
                     }
                     return@collectLatest
+                }
+                if (seat == HUMAN && !turbo) {
+                    // A moment's grace after 托管 is switched on, so an accidental tap can be undone.
+                    val grace = trusteeSince + TRUSTEE_GRACE_MS - SystemClock.uptimeMillis()
+                    if (grace > 0) delay(grace)
                 }
                 val bot = if (seat == HUMAN) assistant else bots[seat] ?: return@collectLatest
                 val started = SystemClock.uptimeMillis()
@@ -228,6 +275,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                 if (thought > SLOW_DECISION_MS) Log.i(TAG, "seat $seat thought ${thought}ms (${sess.room.difficulty}, ${s.phase})")
                 val remaining = pacing(s, seat) - thought
                 if (remaining > 0) delay(remaining)
+                waitForVoice()
                 dispatch(action)
             }
         }
@@ -236,9 +284,25 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
     private fun budget(room: Room): SearchBudget =
         if (room.difficulty == Difficulty.HARD) SearchBudget.Millis(HARD_THINK_MS) else SearchBudget.Samples(8)
 
+    private val speedFactor: Double get() = appData.value?.settings?.speed?.factor ?: 1.0
+
+    /** Plays the your-turn chime once per engine step (not again after returning from the background). */
+    private fun cueTurn(seq: Int) {
+        if (turnCueSeq == seq) return
+        turnCueSeq = seq
+        sound.play(Sfx.TURN)
+    }
+
+    /** Let natural recordings finish before another automatic action starts talking. */
+    private suspend fun waitForVoice() {
+        if (turbo) return
+        val deadline = SystemClock.uptimeMillis() + 12_000
+        while (voice.busy && SystemClock.uptimeMillis() < deadline) delay(60)
+    }
+
     private fun pacing(s: GameState, seat: Int): Long {
         if (turbo) return 0
-        val speed = appData.value?.settings?.speed?.factor ?: 1.0
+        val speed = speedFactor
         val base = when (s.phase) {
             Phase.BIDDING -> 800.0
             Phase.DOUBLING -> 550.0
@@ -256,7 +320,7 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
             GameEngine.apply(sess.state, action)
         } catch (e: IllegalActionException) {
             Log.w(TAG, "rejected $action", e)
-            if (action.seat == HUMAN) _messages.tryEmit("这手牌不能出")
+            if (action.seat == HUMAN) feedback("这手牌不能出", "error_combo")
             return
         }
         if (action.seat == HUMAN || t.state.phase != sess.state.phase) selection.value = emptySet()
@@ -264,15 +328,22 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         val personas = if (result == null) sess.personas else sess.personas.mapIndexed { seat, p ->
             if (seat == HUMAN) p else p.copy(coins = (p.coins + result.delta[seat]).coerceAtLeast(0))
         }
+        val cannotBeat = action is Action.Pass && sess.state.trick?.let {
+            !MoveGenerator.canBeat(sess.state.hands[action.seat].counts(), it)
+        } == true
+        // Main.immediate collectors can react synchronously: queue this play before publishing
+        // the next turn so its chime and automatic action always see the pending announcement.
+        handleEvents(t.events, t.state, cannotBeat)
         session.value = sess.copy(state = t.state, personas = personas)
-        handleEvents(t.events, t.state)
         if (result != null) {
             container.scope.launch { store.settle(t.state, result) }
             viewModelScope.launch {
                 delay(if (turbo) 150 else RESULT_DELAY_MS)
+                if (session.value?.state?.seed != t.state.seed) return@launch
                 showResult.value = true
                 if (autoRestart) {
                     delay(if (turbo) 150 else AUTO_RESTART_MS)
+                    waitForVoice()
                     if (session.value?.state?.seed == t.state.seed && !playAgain()) autoRestart = false
                 }
             }
@@ -287,12 +358,33 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         store.saveTable(SavedTable(sess.room, sess.personas, sess.state))
     }
 
-    private fun handleEvents(events: List<GameEvent>, state: GameState) {
+    private fun handleEvents(events: List<GameEvent>, state: GameState, cannotBeat: Boolean = false) {
+        val plan = GameAudioPlanner.plan(events, state.seq, state.result?.let(::humanWon) == true, cannotBeat)
+        val queueAhead = voice.estimatedRemainingMs
+        if (!turbo) voice.enqueue(plan.lines)
+        soundSequence?.cancel()
+        soundSequence = viewModelScope.launch {
+            val voiced = voice.enabled && voice.active && voice.volume > 0f && !turbo
+            var previousEnd = 0L
+            val cues = plan.sounds.map { cue ->
+                val offset = if (cue.afterLine < 0) 0L else if (voiced) {
+                    queueAhead + plan.lines.take(cue.afterLine + 1).sumOf { voice.durationMs(it) + 80 }
+                } else 220L
+                val start = maxOf(offset, previousEnd)
+                previousEnd = start + sound.durationMs(cue.sound)
+                start to cue.sound
+            }
+            var elapsed = 0L
+            for ((offset, sfx) in cues) {
+                if (offset > elapsed) delay(offset - elapsed)
+                elapsed = offset
+                if (foreground.value && !_paused.value && session.value?.state?.seed == state.seed && !turbo) sound.play(sfx)
+            }
+        }
         for (e in events) {
             when (e) {
                 is GameEvent.Dealt -> {
                     if (e.isRedeal) _messages.tryEmit("没有人叫地主，重新发牌")
-                    sound.play(Sfx.DEAL)
                     dealUntil = SystemClock.uptimeMillis() + dealMs
                     dealing.value = true
                     viewModelScope.launch {
@@ -300,40 +392,19 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
                         if (SystemClock.uptimeMillis() >= dealUntil) dealing.value = false
                     }
                 }
-                is GameEvent.BidMade -> {
-                    sound.play(Sfx.CLICK)
-                    voice.say(e.kind.zh, e.seat)
-                }
                 is GameEvent.LandlordSet -> {
-                    sound.play(Sfx.TURN)
                     _effects.tryEmit(TableEffect.LandlordChosen(e.seat))
                 }
-                is GameEvent.JiabeiChosen -> if (e.seat == HUMAN) sound.play(Sfx.CLICK)
                 is GameEvent.Played -> {
-                    sound.play(sfxFor(e.combo))
-                    voice.say(VoiceAnnouncer.combo(e.combo), e.seat)
                     _effects.tryEmit(TableEffect.ComboPlayed(e.seat, e.combo, state.seq))
-                }
-                is GameEvent.Passed -> VoiceAnnouncer.phrase(e, state.seq)?.let { voice.say(it, e.seat) }
-                is GameEvent.Alert -> {
-                    sound.play(Sfx.ALERT)
-                    VoiceAnnouncer.phrase(e, state.seq)?.let { voice.say(it, e.seat, interrupt = false) }
                 }
                 is GameEvent.Finished -> {
                     val won = humanWon(e.result)
-                    sound.play(if (won) Sfx.WIN else Sfx.LOSE)
                     _effects.tryEmit(TableEffect.GameOver(e.result, won))
                 }
                 else -> {}
             }
         }
-    }
-
-    private fun sfxFor(c: Combo): Sfx = when (c.type) {
-        ComboType.BOMB -> Sfx.BOMB
-        ComboType.ROCKET -> Sfx.ROCKET
-        ComboType.PLANE, ComboType.PLANE_SINGLES, ComboType.PLANE_PAIRS -> Sfx.PLANE
-        else -> Sfx.PLAY
     }
 
     // ---- human input ----
@@ -344,60 +415,76 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     fun pass() = humanAct { Action.Pass(HUMAN) }
 
+    /** 出牌 is always tappable, so every way it can fail says why. */
     fun play() {
         val s = session.value?.state ?: return
+        if (!humanCanAct(s)) return
         val chosen = selection.value.filter { it in s.hands[HUMAN] }
-        if (chosen.isEmpty()) return
+        if (chosen.isEmpty()) {
+            feedback("请先点选要出的牌，或点「提示」", "error_empty")
+            return
+        }
         val cards = CardSet.of(chosen)
         val trick = s.trick
         val combo = if (trick == null) ComboClassifier.declareLead(cards.counts()) else ComboClassifier.declareFollow(cards.counts(), trick)
         if (combo == null) {
-            _messages.tryEmit(if (trick == null || ComboClassifier.interpretations(cards.counts()).isEmpty()) "所选的牌不符合规则" else "所选的牌大不过上家")
+            val invalid = trick == null || ComboClassifier.interpretations(cards.counts()).isEmpty()
+            feedback(if (invalid) "这几张牌不能一起出" else "这手牌大不过上家", if (invalid) "error_combo" else "error_small")
             return
         }
         humanAct { Action.Play(HUMAN, cards, combo) }
     }
 
+    private fun humanCanAct(s: GameState): Boolean = !_paused.value && !trustee.value && !dealing.value && HUMAN in GameEngine.actors(s)
+
     private inline fun humanAct(make: () -> Action) {
         val s = session.value?.state ?: return
-        if (trustee.value || dealing.value || HUMAN !in GameEngine.actors(s)) return
+        if (!humanCanAct(s)) return
+        audio.onUserInteraction(audioOwner)
         dispatch(make())
     }
 
     fun toggle(card: Card) {
+        if (_paused.value || dealing.value || trustee.value) return
+        audio.onUserInteraction(audioOwner)
+        sound.play(if (card in selection.value) Sfx.DESELECT else Sfx.SELECT)
         selection.value = selection.value.let { if (card in it) it - card else it + card }
     }
 
     /** Sets every card in [cards] to [selected] (drag selection). */
     fun setSelected(cards: Collection<Card>, selected: Boolean) {
-        selection.value = if (selected) selection.value + cards else selection.value - cards.toSet()
-    }
-
-    fun clearSelection() {
-        selection.value = emptySet()
+        if (_paused.value || dealing.value || trustee.value) return
+        audio.onUserInteraction(audioOwner)
+        val next = if (selected) selection.value + cards else selection.value - cards.toSet()
+        if (next != selection.value) sound.play(if (selected) Sfx.SELECT else Sfx.DESELECT)
+        selection.value = next
     }
 
     fun setTrustee(on: Boolean) {
+        if (on == trustee.value) return
+        if (on && !trustee.value) trusteeSince = SystemClock.uptimeMillis()
         trustee.value = on
         if (on) selection.value = emptySet()
+        voice.enqueue(listOf(VoiceLine(if (on) "trustee_on" else "trustee_off", HUMAN)))
     }
 
     /** 提示: cycles through suggested plays, cheapest breakage first, bombs last. */
     fun hint() {
         val s = session.value?.state ?: return
-        if (s.phase != Phase.PLAYING || s.turn != HUMAN || trustee.value) return
+        if (s.phase != Phase.PLAYING || s.turn != HUMAN || trustee.value || _paused.value) return
         if (hintSeq != s.seq) {
             hints = computeHints(s)
             hintIndex = 0
             hintSeq = s.seq
         }
         if (hints.isEmpty()) {
-            _messages.tryEmit("没有能大过上家的牌")
+            feedback("没有能大过上家的牌", "error_small")
             return
         }
         val m = hints[hintIndex % hints.size]
         hintIndex++
         selection.value = s.hands[HUMAN].pick(m.counts).cards().toSet()
+        sound.play(Sfx.HINT)
     }
 
     private fun computeHints(s: GameState): List<Move> {
@@ -418,15 +505,46 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
 
     fun claimRelief() {
         viewModelScope.launch {
+            val granted = store.claimRelief()
             _messages.tryEmit(
-                if (store.claimRelief()) "已领取救济金 ${Profile.RELIEF_AMOUNT} 金币"
+                if (granted) "已领取救济金 ${Profile.RELIEF_AMOUNT} 金币"
                 else "金币少于 ${Profile.RELIEF_THRESHOLD} 时才能领取救济金",
             )
+            if (granted) {
+                sound.play(Sfx.RELIEF)
+                voice.enqueue(listOf(VoiceLine("relief", HUMAN)))
+            } else sound.play(Sfx.ERROR)
         }
+    }
+
+    fun clickUi() { audio.onUserInteraction(audioOwner); sound.play(Sfx.CLICK) }
+
+    fun previewSound() {
+        if (!sound.enabled || sound.volume == 0f) { _messages.tryEmit("请先开启音效并调高音效音量"); return }
+        sound.play(Sfx.TURN)
+    }
+
+    fun previewVoice(seat: Int) {
+        if (!voice.enabled || voice.volume == 0f) { _messages.tryEmit("请先开启语音报牌并调高语音音量"); return }
+        voice.stop()
+        voice.enqueue(listOf(VoiceLine("call", seat, important = true), VoiceLine("pair_3", seat, important = true), VoiceLine("rocket", seat, important = true)))
+    }
+
+    private fun feedback(message: String, key: String) {
+        _messages.tryEmit(message)
+        val now = SystemClock.uptimeMillis()
+        if (now - lastFeedbackAt < 1_200) return
+        lastFeedbackAt = now
+        sound.play(Sfx.ERROR)
+        voice.enqueue(listOf(VoiceLine(key, HUMAN)))
     }
 
     fun updateSettings(transform: (Settings) -> Settings) {
         viewModelScope.launch { store.updateSettings(transform) }
+    }
+
+    fun setAvatar(id: String) {
+        viewModelScope.launch { store.updateAvatar(id) }
     }
 
     fun resetData() {
@@ -436,12 +554,19 @@ class GameViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    override fun onCleared() {
+        soundSequence?.cancel()
+        audio.setForeground(audioOwner, false)
+        audio.stop(audioOwner)
+    }
+
     private fun humanWon(r: GameResult): Boolean = (r.landlord == HUMAN) == r.landlordWon
 
     companion object {
         private const val TAG = "GameViewModel"
         const val DEAL_MS = 1_500L
         const val AUTO_PASS_MS = 1_500L
+        const val TRUSTEE_GRACE_MS = 2_000L
         const val RESULT_DELAY_MS = 1_700L
         const val HARD_THINK_MS = 450L
         private const val AUTO_RESTART_MS = 1_200L

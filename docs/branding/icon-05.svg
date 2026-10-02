@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="title" style="color:#E4C994">
+  <title id="title">三席牌室</title>
+  <!-- Three substantial player nodes frame a single card-table oval: a friendly local-room identity with no gambling imagery. -->
+  <rect width="100" height="100" rx="22" fill="#102B25"/>
+  <ellipse id="table" cx="50" cy="50" rx="26" ry="19" fill="#234C41" stroke="currentColor" stroke-width="3"/>
+  <g id="three-seats" fill="currentColor" stroke="#102B25" stroke-width="2.5">
+    <circle cx="28" cy="36" r="7"/><circle cx="72" cy="36" r="7"/><circle cx="50" cy="71" r="7"/>
+  </g>
+  <rect x="44" y="42" width="12" height="17" rx="2" fill="#FFFCF4"/>
+  <path d="M50 46 54 51 50 56 46 51 Z" fill="#AD303E"/>
+</svg>

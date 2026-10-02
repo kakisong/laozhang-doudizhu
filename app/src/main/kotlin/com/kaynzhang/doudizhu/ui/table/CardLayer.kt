@@ -143,6 +143,6 @@ private fun CardSprite(spec: SpriteSpec, g: TableGeometry) {
                 },
             ),
     ) {
-        CardFace(spec.card, faceUp = true, modifier = Modifier.fillMaxSize(), shade = spec.shade)
+        CardFace(spec.card, faceUp = true, modifier = Modifier.fillMaxSize(), shade = spec.shade, selected = spec.selected)
     }
 }

@@ -15,7 +15,22 @@ data class AppData(
     val savedTable: SavedTable? = null,
     /** Seed of the last settled game; late saves of that game are ignored so it can't pay out twice. */
     val lastSettledSeed: Long? = null,
+    /** Local ISO dates, recorded when games settle; older saves start without daily history. */
+    val dailyStats: Map<String, DailyStats> = emptyMap(),
 ) {
+    /** Applies all settlement accounting together; repeated delivery of the same game is harmless. */
+    fun settled(seed: Long, result: GameResult, dayKey: String): AppData {
+        if (lastSettledSeed == seed) return this
+        val day = (dailyStats[dayKey] ?: DailyStats()).record(result)
+        return copy(
+            profile = profile.copy(coins = (profile.coins + result.delta[0]).coerceAtLeast(0)),
+            stats = stats.record(result),
+            dailyStats = dailyStats + (dayKey to day),
+            savedTable = null,
+            lastSettledSeed = seed,
+        )
+    }
+
     companion object {
         const val SCHEMA = 1
     }
@@ -24,6 +39,7 @@ data class AppData(
 @Serializable
 data class Profile(
     val coins: Long = STARTING_COINS,
+    val avatarId: String = BuiltInPortraits.DEFAULT_ID,
 ) {
     /** 救济金 is available whenever the player is nearly broke, as often as needed. */
     val canClaimRelief: Boolean get() = coins < RELIEF_THRESHOLD
@@ -45,8 +61,11 @@ enum class Speed(val zh: String, val factor: Double) {
 data class Settings(
     val sound: Boolean = true,
     val voice: Boolean = true,
+    val soundVolume: Int = 75,
+    val voiceVolume: Int = 90,
     val cardCounter: Boolean = true,
-    val speed: Speed = Speed.NORMAL,
+    /** Slow by default: most players are older. Saved settings keep their own value. */
+    val speed: Speed = Speed.SLOW,
 )
 
 @Serializable
@@ -76,6 +95,18 @@ data class Stats(
             springs = springs + if (won && (result.spring || result.antiSpring)) 1 else 0,
         )
     }
+}
+
+/** A settlement-day snapshot, including the signed gain from games played that day. */
+@Serializable
+data class DailyStats(
+    val stats: Stats = Stats(),
+    val netCoins: Long = 0,
+) {
+    fun record(result: GameResult, humanSeat: Int = 0): DailyStats = copy(
+        stats = stats.record(result, humanSeat),
+        netCoins = netCoins + result.delta[humanSeat],
+    )
 }
 
 /** A computer opponent's identity and bankroll for one table session. */

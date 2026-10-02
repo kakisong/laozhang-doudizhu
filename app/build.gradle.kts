@@ -11,15 +11,15 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.kaynzhang.doudizhu"
+        applicationId = "com.laozhang.doudizhu"
         minSdk {
             version = release(26)
         }
         targetSdk {
             version = release(36)
         }
-        versionCode = 2
-        versionName = "1.0.1"
+        versionCode = 4
+        versionName = "1.1.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -41,6 +41,10 @@ android {
     buildFeatures {
         compose = true
     }
+
+    androidResources {
+        noCompress += "m4a"
+    }
 }
 
 dependencies {
@@ -60,6 +64,8 @@ dependencies {
     implementation(libs.androidx.datastore)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
+
+    testImplementation(libs.junit4)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)

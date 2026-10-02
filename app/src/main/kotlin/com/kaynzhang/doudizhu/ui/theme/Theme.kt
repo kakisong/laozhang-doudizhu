@@ -7,35 +7,40 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
 object DdzColors {
-    val FeltCenter = Color(0xFF1E7B55)
-    val FeltEdge = Color(0xFF0A4430)
-    val FeltLine = Color(0x33FFFFFF)
+    val FeltCenter = Color(0xFF234C41)
+    val FeltEdge = Color(0xFF102B25)
+    val FeltLine = Color(0x24D8C49B)
 
-    val Gold = Color(0xFFF6C453)
-    val GoldDeep = Color(0xFFC8962B)
-    val Cream = Color(0xFFFFF8E7)
+    val Gold = Color(0xFFE4C994)
+    val GoldDeep = Color(0xFFAF8D54)
+    val Cream = Color(0xFFF5F0E5)
+    val TextMuted = Color(0xFFADC1B7)
+    val Hairline = Color(0x33D8C49B)
+    val Ink = Color(0xFF24362E)
+    val Surface = Color(0xFF1B3931)
 
-    val CardFace = Color(0xFFFFFDF7)
-    val CardBorder = Color(0xFFD6CCB6)
-    val SuitRed = Color(0xFFD32F2F)
-    val SuitBlack = Color(0xFF1F1F1F)
-    val BackRed = Color(0xFFB3261E)
-    val BackRedDeep = Color(0xFF7A1712)
+    val CardFace = Color(0xFFFFFCF4)
+    val CardBorder = Color(0xFFC9BEA6)
+    val SuitRed = Color(0xFFAD303E)
+    val SuitBlack = Color(0xFF23342E)
+    val BackRed = Color(0xFF853441)
+    val BackRedDeep = Color(0xFF4F202D)
 
-    val Orange = Color(0xFFF59E0B)
-    val OrangeDeep = Color(0xFFD97706)
-    val Blue = Color(0xFF3B82F6)
-    val BlueDeep = Color(0xFF1D4ED8)
-    val Green = Color(0xFF22C55E)
-    val GreenDeep = Color(0xFF15803D)
-    val Gray = Color(0xFF9CA3AF)
-    val GrayDeep = Color(0xFF4B5563)
+    // Legacy names remain for callers; actions now share a restrained, accessible palette.
+    val Orange = Color(0xFFE4C994)
+    val OrangeDeep = Color(0xFFD4B57C)
+    val Blue = Color(0xFF2B5044)
+    val BlueDeep = Color(0xFF244238)
+    val Green = Color(0xFFE4C994)
+    val GreenDeep = Color(0xFFD4B57C)
+    val Gray = Color(0xFF203C33)
+    val GrayDeep = Color(0xFF193229)
 
-    val Panel = Color(0xB3081F17)
-    val PanelStrong = Color(0xE6071A13)
-    val Scrim = Color(0x99000000)
-    val Win = Color(0xFFFFD54F)
-    val Lose = Color(0xFF90A4AE)
+    val Panel = Color(0xB31A352D)
+    val PanelStrong = Color(0xFF162F28)
+    val Scrim = Color(0xBB081510)
+    val Win = Gold
+    val Lose = TextMuted
 
     val felt: Brush
         get() = Brush.radialGradient(listOf(FeltCenter, FeltEdge))
@@ -43,8 +48,9 @@ object DdzColors {
 
 private val scheme = darkColorScheme(
     primary = DdzColors.Orange,
-    onPrimary = Color.White,
-    secondary = DdzColors.Blue,
+    onPrimary = DdzColors.Ink,
+    secondary = DdzColors.Gold,
+    onSecondary = DdzColors.Ink,
     background = DdzColors.FeltEdge,
     surface = DdzColors.PanelStrong,
     onSurface = DdzColors.Cream,

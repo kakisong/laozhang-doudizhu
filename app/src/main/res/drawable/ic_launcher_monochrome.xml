@@ -1,48 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Single-colour variant for themed icons: card outlines plus filled suits. -->
+<!-- Matching shoulder-back silhouette: short hair, side spectacles, angled sweater and two hands holding five cards. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="108dp"
-    android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-
-    <group
-        android:pivotX="54"
-        android:pivotY="80"
-        android:rotation="-14"
-        android:translateX="-7">
-        <path
-            android:strokeColor="#FFFFFF"
-            android:strokeWidth="3"
-            android:pathData="M40,29 H68 A4,4 0 0 1 72,33 V75 A4,4 0 0 1 68,79 H40 A4,4 0 0 1 36,75 V33 A4,4 0 0 1 40,29 Z" />
-        <group
-            android:scaleX="0.2"
-            android:scaleY="0.2"
-            android:translateX="44"
-            android:translateY="44">
-            <path
-                android:fillColor="#FFFFFF"
-                android:pathData="M50,5 C62,25 92,40 92,62 C92,77 81,86 69,86 C61,86 55,82 52,77 C53,85 56,91 62,95 L38,95 C44,91 47,85 48,77 C45,82 39,86 31,86 C19,86 8,77 8,62 C8,40 38,25 50,5 Z" />
-        </group>
-    </group>
-
-    <group
-        android:pivotX="54"
-        android:pivotY="80"
-        android:rotation="12"
-        android:translateX="7">
-        <path
-            android:strokeColor="#FFFFFF"
-            android:strokeWidth="3"
-            android:pathData="M40,29 H68 A4,4 0 0 1 72,33 V75 A4,4 0 0 1 68,79 H40 A4,4 0 0 1 36,75 V33 A4,4 0 0 1 40,29 Z" />
-        <group
-            android:scaleX="0.2"
-            android:scaleY="0.2"
-            android:translateX="44"
-            android:translateY="44">
-            <path
-                android:fillColor="#FFFFFF"
-                android:pathData="M50,92 C22,68 5,52 5,33 C5,18 17,7 30,7 C39,7 46,12 50,20 C54,12 61,7 70,7 C83,7 95,18 95,33 C95,52 78,68 50,92 Z" />
-        </group>
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <group android:pivotX="54" android:pivotY="54" android:scaleX="0.82" android:scaleY="0.82">
+        <!-- Short wavy hair and the visible ear/cheek, seen from behind the left shoulder. -->
+        <path android:fillColor="#00000000" android:strokeColor="#FFFFFF" android:strokeWidth="2.8"
+            android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:pathData="M30,54 C26,52 24,48 27,44 C24,40 27,34 32,32 C35,26 40,24 45,26 C50,24 55,29 54,34 C59,37 58,43 54,45 C54,49 50,53 46,54 M49,45 C54,42 54,48 52,51 C51,55 48,55 47,51 M55,46 C58,53 54,60 48,61 M49,44 L59,44 M57,41 L60,43 L60,48 L57,49" />
+        <path android:fillColor="#00000000" android:strokeColor="#FFFFFF" android:strokeWidth="2.2"
+            android:strokeLineCap="round" android:pathData="M34,41 Q33,35 39,32 M42,43 Q48,41 49,35 M32,48 Q35,53 41,50" />
+        <!-- A sloping back and sweater collar establish the same rear three-quarter pose. -->
+        <path android:fillColor="#00000000" android:strokeColor="#FFFFFF" android:strokeWidth="2.8"
+            android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:pathData="M28,60 C34,57 43,60 49,64 C53,68 55,76 62,81 M28,65 Q40,65 48,71 C53,75 55,80 60,81 M48,61 L51,64 M31,61 L30,64 M38,62 L37,65 M45,64 L44,67 M61,81 Q69,78 73,81" />
+        <!-- Five clean card tops fan out toward the right. Bottom edges stop at the gripping fingers. -->
+        <path android:fillColor="#00000000" android:strokeColor="#FFFFFF" android:strokeWidth="2.6"
+            android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:pathData="M56,62 L52,51 Q51.5,50 53,49.5 L59,47.5 M62,62 L59,48 Q59,46.5 60.5,46.5 L66,46.5 M65,66 L66,47 Q66,46 67.5,46.5 L73,48 M69,66 L74,48.5 Q74.5,47.5 76,48.5 L80.5,51 M75,65 L81,52 Q81.5,51 83,52 L86,55 Q87,56 86,57 L79,68" />
+        <!-- Both thumbs close around the card fan; curved forearms connect them to the sweater. -->
+        <path android:fillColor="#00000000" android:strokeColor="#FFFFFF" android:strokeWidth="2.8"
+            android:strokeLineCap="round" android:strokeLineJoin="round"
+            android:pathData="M49,66 Q51,63 55,62 L60,60 Q64,59 64,62 C64,65 60,67 59,68 Q59,72 55,74 M66,68 Q65,73 61,75 M76,76 C72,72 74,68 73,66 L71,63 Q70,60 72,59.5 C75,58.5 78,63 79,64 L83,68 Q87,73 82,78 M74,79 Q78,75 82,78 L80,82" />
     </group>
 </vector>

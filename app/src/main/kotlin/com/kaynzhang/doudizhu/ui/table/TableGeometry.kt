@@ -3,48 +3,83 @@ package com.kaynzhang.doudizhu.ui.table
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.Density
 import kotlin.math.floor
+import kotlin.math.max
 import kotlin.math.min
 
 /**
  * Pixel layout of the table, derived from the available size. Every card position on screen
  * (hand slots, play areas, seat anchors, the 底牌 row) comes from here, so sprites can animate
  * between any two places in one coordinate system.
+ *
+ * Sized for older players on landscape phones that are only 320–360dp tall: the human's play
+ * area doubles as the action-button row (the two are never needed at the same time), and the
+ * height this saves goes to the cards on the table.
  */
 class TableGeometry(val w: Float, val h: Float, density: Density, hasCounter: Boolean) {
     private val px = density.density
     fun dp(v: Float): Float = v * px
 
-    /** Landscape phones such as 1440×3168 @640dpi are only ~360dp tall: tighten the top rows there. */
+    /** Landscape phones such as 1440×3168 @640dpi are only ~360dp tall (~320dp with a larger display size). */
     private val short = h < dp(400f)
 
     val margin = dp(10f)
-    val topBarH = dp(if (short) 44f else 48f)
-    val counterH = if (hasCounter) dp(if (short) 30f else 34f) else 0f
+    val topBarH = dp(48f)
+    val counterH = if (hasCounter) dp(36f) else 0f
+    private val rowsTop = topBarH + counterH + dp(4f)
 
-    val cardH = (h * 0.27f).coerceIn(dp(84f), dp(150f))
+    /** Opponents sit in the top corners, beside the centred 记牌器 rather than below it. */
+    val seatW = dp(96f)
+    val seatTop = topBarH + dp(6f)
+    val seatAvatar = if (short) 48 else 52
+    val seatBottom = seatTop + dp(seatAvatar + 42f)
+
+    /** Width of one 记牌器 column, narrow enough that the strip never reaches the seat panels. */
+    val counterColW = ((w - dp(236f)) / 15f).coerceIn(dp(22f), dp(30f))
+
+    // Capped by width too, so even a 20-card hand shows every corner index (a "10" needs ~0.42 of a card).
+    val cardH = (h * 0.27f).coerceIn(dp(84f), dp(150f)).coerceAtMost((w - 2 * margin) / 6.3f)
     val cardW = cardH * 0.7f
-    val raise = cardH * 0.17f
+    val raise = cardH * 0.2f
     val handTop = h - cardH - dp(4f)
 
-    val buttonsH = dp(46f)
-    val buttonsTop = handTop - raise - buttonsH - dp(4f)
-
-    val aiPlayTop = topBarH + counterH + dp(if (short) 8f else 10f)
-
-    /** Top of the opponents' seat panels. */
-    val seatTop = aiPlayTop - dp(4f)
-    val tableScale = min(0.62f, (buttonsTop - dp(12f) - aiPlayTop) / (2f * cardH))
+    // Two rows share the space between the counter and the hand: the opponents' plays, then the
+    // human's row (action buttons on the human's turn, the human's last play otherwise).
+    private val humanRowBottom = handTop - raise - dp(4f)
+    private val rowsSpace = humanRowBottom - rowsTop - dp(6f)
+    val tableH = (if (rowsSpace >= dp(112f)) rowsSpace / 2 else rowsSpace - dp(56f)).coerceIn(cardH * 0.5f, cardH * 0.78f)
+    val tableScale = tableH / cardH
     val tableW = cardW * tableScale
-    val tableH = cardH * tableScale
-    val humanPlayTop = buttonsTop - tableH - dp(8f)
+    val humanRowH = max(dp(56f), tableH)
+    val humanRowTop = humanRowBottom - humanRowH
+    val aiPlayTop = rowsTop + max(0f, rowsSpace - tableH - humanRowH) / 2
 
-    val seatW = dp(96f)
+    /** Action buttons sit in three fixed slots so each kind of choice is always in the same place. */
+    val humanPanelW = dp(120f)
+    private val slotGap = dp(32f)
+    private val slotsMinLeft = margin + humanPanelW + dp(12f)
+    val buttonW = min(dp(124f), (w - slotsMinLeft - margin - 2 * slotGap) / 3)
+    val buttonH = dp(56f)
+    val buttonTop = humanRowTop + (humanRowH - buttonH) / 2
+    private val slotsLeft = max((w - 3 * buttonW - 2 * slotGap) / 2, slotsMinLeft)
+
+    /** Left edge of action slot [i]: 0 declines (不出, 不叫…), 1 is 提示, 2 confirms (出牌, 叫地主…). */
+    fun slotX(i: Int): Float = slotsLeft + i * (buttonW + slotGap)
+
+    /** The human's badge, left of the buttons; kept clear of the left opponent's panel (and its crown). */
+    val humanPanelTop = max(seatBottom + dp(14f), humanRowTop + (humanRowH - dp(44f)) / 2)
+
+    /** Vertical centre of the opponents' row, where table-wide messages and banners go. */
+    val messageY = aiPlayTop + tableH / 2
+
+    /** Top of the 托管 banner: it covers the lower part of the hand but leaves the corner indices visible. */
+    val trusteeTop = max(handTop + cardW * 0.56f, h - dp(64f))
+
     private val leftPlayLeft = margin + seatW + dp(12f)
     private val rightPlayRight = w - margin - seatW - dp(12f)
+    private val humanPlayLeft = margin + humanPanelW + dp(12f)
 
-    val bottomScale = (topBarH - dp(8f)) / cardH
-    val bottomW = cardW * bottomScale
-    val bottomH = cardH * bottomScale
+    val bottomH = topBarH - dp(6f)
+    val bottomW = bottomH * 0.7f
 
     /** Where freshly dealt cards come from. */
     val deck = Offset(w / 2 - cardW / 2, h * 0.3f)
@@ -76,7 +111,7 @@ class TableGeometry(val w: Float, val h: Float, density: Density, hasCounter: Bo
 
     private fun playStep(seat: Int, n: Int): Float {
         if (n <= 1) return 0f
-        val room = if (seat == 0) w - 2 * leftPlayLeft else (w / 2 - leftPlayLeft - dp(16f))
+        val room = if (seat == 0) w - 2 * humanPlayLeft else (w / 2 - leftPlayLeft - dp(8f))
         return min(tableW * 0.42f, (room - tableW) / (n - 1))
     }
 
@@ -89,28 +124,31 @@ class TableGeometry(val w: Float, val h: Float, density: Density, hasCounter: Bo
             1 -> rightPlayRight - width
             else -> leftPlayLeft
         }
-        val top = if (seat == 0) humanPlayTop else aiPlayTop + dp(8f)
+        val top = if (seat == 0) humanRowTop + (humanRowH - tableH) / 2 else aiPlayTop
         return Offset(left + i * step, top)
     }
 
     /** Centre line of a seat's play area (for banners and bubbles). */
     fun playCenter(seat: Int): Offset = when (seat) {
-        0 -> Offset(w / 2, humanPlayTop + tableH / 2)
-        1 -> Offset(rightPlayRight - tableW * 1.5f, aiPlayTop + dp(8f) + tableH / 2)
-        else -> Offset(leftPlayLeft + tableW * 1.5f, aiPlayTop + dp(8f) + tableH / 2)
+        0 -> Offset(w / 2, humanRowTop + humanRowH / 2)
+        1 -> Offset(rightPlayRight - tableW * 1.5f, aiPlayTop + tableH / 2)
+        else -> Offset(leftPlayLeft + tableW * 1.5f, aiPlayTop + tableH / 2)
     }
 
-    /** Where an opponent's cards appear from (its avatar), in full-size card coordinates. */
-    fun seatAnchor(seat: Int): Offset = when (seat) {
-        1 -> Offset(w - margin - seatW / 2 - cardW / 2, aiPlayTop + dp(10f))
-        2 -> Offset(margin + seatW / 2 - cardW / 2, aiPlayTop + dp(10f))
-        else -> Offset(w / 2 - cardW / 2, h)
+    /** Where an opponent's cards appear from (its avatar), in table-card coordinates. */
+    fun seatAnchor(seat: Int): Offset {
+        val cy = seatTop + dp(seatAvatar / 2f) - tableH / 2
+        return when (seat) {
+            1 -> Offset(w - margin - seatW / 2 - tableW / 2, cy)
+            2 -> Offset(margin + seatW / 2 - tableW / 2, cy)
+            else -> Offset(w / 2 - cardW / 2, h)
+        }
     }
 
     /** Top-left of the i-th 底牌 in the top bar. */
     fun bottomSlot(i: Int): Offset {
         val gap = dp(4f)
         val total = 3 * bottomW + 2 * gap
-        return Offset(w / 2 - total / 2 + i * (bottomW + gap), dp(4f))
+        return Offset(w / 2 - total / 2 + i * (bottomW + gap), dp(3f))
     }
 }

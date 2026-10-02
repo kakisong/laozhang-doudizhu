@@ -18,9 +18,9 @@ import com.kaynzhang.doudizhu.game.GameViewModel
  * Test-harness entry points, compiled into debug builds only. Examples:
  *
  * ```
- * adb shell am start -n com.kaynzhang.doudizhu/.MainActivity --es room NOVICE --el seed 42 --ez autoplay true
- * adb shell am start -n com.kaynzhang.doudizhu/.MainActivity --es room NORMAL --es scenario bomb
- * adb shell am start -n com.kaynzhang.doudizhu/.MainActivity --es room NOVICE --ez autoplay true --ez loop true --ez turbo true
+ * adb shell am start -n com.laozhang.doudizhu/com.kaynzhang.doudizhu.MainActivity --es room NOVICE --el seed 42 --ez autoplay true
+ * adb shell am start -n com.laozhang.doudizhu/com.kaynzhang.doudizhu.MainActivity --es room NORMAL --es scenario bomb
+ * adb shell am start -n com.laozhang.doudizhu/com.kaynzhang.doudizhu.MainActivity --es room NOVICE --ez autoplay true --ez loop true --ez turbo true
  * ```
  * Scenarios: bomb, rocket, plane, spring (the human gets a scripted hand, the rest is dealt by seed).
  */

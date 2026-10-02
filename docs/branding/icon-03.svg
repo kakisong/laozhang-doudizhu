@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-labelledby="title" style="color:#E4C994">
+  <title id="title">黑桃留白</title>
+  <!-- One solid card with an actual transparent spade cutout: the simplest high-contrast option, with ample space around the mark. -->
+  <rect width="100" height="100" rx="22" fill="#102B25"/>
+  <path id="negative-spade-card" fill="currentColor" fill-rule="evenodd" d="M37 22 H63 Q68 22 68 27 V73 Q68 78 63 78 H37 Q32 78 32 73 V27 Q32 22 37 22 Z M50 37 C54 43 62 47 62 53 C62 61 54 63 51 58 Q51 63 55 67 H45 Q49 63 49 58 C46 63 38 61 38 53 C38 47 46 43 50 37 Z"/>
+</svg>

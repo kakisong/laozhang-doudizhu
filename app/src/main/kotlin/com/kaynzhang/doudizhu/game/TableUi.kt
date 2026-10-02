@@ -1,8 +1,10 @@
 package com.kaynzhang.doudizhu.game
 
+import com.kaynzhang.doudizhu.data.BuiltInPortraits
 import com.kaynzhang.doudizhu.data.Persona
 import com.kaynzhang.doudizhu.data.Room
 import com.kaynzhang.doudizhu.data.Settings
+import com.kaynzhang.doudizhu.data.portraitId
 import com.kaynzhang.doudizhu.engine.game.BidStage
 import com.kaynzhang.doudizhu.engine.game.GameResult
 import com.kaynzhang.doudizhu.engine.game.GameState
@@ -50,6 +52,8 @@ data class TableUi(
     val displayCombos: List<Combo?>,
     /** Played cards no longer on display (fading out). */
     val gone: List<Card>,
+    /** Seat whose play the next player has to beat, or -1 when the trick is open. */
+    val trickOwner: Int,
     val bottom: List<Card>,
     val bottomRevealed: Boolean,
     val baseScore: Long,
@@ -62,6 +66,7 @@ data class TableUi(
     val dealing: Boolean,
     val result: GameResult?,
     val showResult: Boolean,
+    val paused: Boolean = false,
 )
 
 data class Session(val room: Room, val personas: List<Persona>, val state: GameState)
@@ -76,6 +81,8 @@ fun buildTableUi(
     showResult: Boolean,
     humanCoins: Long,
     settings: Settings,
+    paused: Boolean = false,
+    humanAvatarId: String = BuiltInPortraits.DEFAULT_ID,
 ): TableUi {
     val s = session.state
     val finished = s.phase == Phase.FINISHED
@@ -109,28 +116,9 @@ fun buildTableUi(
     val shown = displays.flatten().toSet()
     val gone = s.log.flatMap { it.cards.cards() }.filter { it !in shown }
 
-    val seats = (0 until Seats.COUNT).map { seat ->
-        val persona = session.personas[seat]
-        SeatUi(
-            seat = seat,
-            name = persona.name,
-            avatar = persona.avatar,
-            coins = if (seat == HUMAN) humanCoins else persona.coins,
-            cards = s.hands[seat].size,
-            isLandlord = s.landlord == seat,
-            status = statuses[seat],
-            thinking = !finished && !dealing && when (s.phase) {
-                Phase.BIDDING, Phase.PLAYING -> s.turn == seat
-                Phase.DOUBLING -> s.jiabei[seat] == null
-                Phase.FINISHED -> false
-            },
-            doubled = allDecided && s.jiabei[seat] == true,
-        )
-    }
-
     val hand = s.hands[HUMAN].cards().sortedWith(DISPLAY_ORDER)
     val controls = when {
-        dealing || trustee -> Controls.NONE
+        dealing || trustee || paused -> Controls.NONE
         s.phase == Phase.BIDDING && s.turn == HUMAN -> if (s.bidding.stage == BidStage.CALL) Controls.CALL else Controls.ROB
         s.phase == Phase.DOUBLING && s.jiabei[HUMAN] == null -> Controls.JIABEI
         s.phase == Phase.PLAYING && s.turn == HUMAN -> when {
@@ -140,6 +128,28 @@ fun buildTableUi(
         }
         else -> Controls.NONE
     }
+    // While the human is choosing, their old bubble (e.g. "叫地主" before the final re-rob) would sit on the buttons.
+    if (controls != Controls.NONE) statuses[HUMAN] = null
+
+    val seats = (0 until Seats.COUNT).map { seat ->
+        val persona = session.personas[seat]
+        SeatUi(
+            seat = seat,
+            name = persona.name,
+            avatar = if (seat == HUMAN) BuiltInPortraits.resolve(humanAvatarId).id else persona.portraitId,
+            coins = if (seat == HUMAN) humanCoins else persona.coins,
+            cards = s.hands[seat].size,
+            isLandlord = s.landlord == seat,
+            status = statuses[seat],
+            thinking = !finished && !dealing && !paused && when (s.phase) {
+                Phase.BIDDING, Phase.PLAYING -> s.turn == seat
+                Phase.DOUBLING -> s.jiabei[seat] == null
+                Phase.FINISHED -> false
+            },
+            doubled = allDecided && s.jiabei[seat] == true,
+        )
+    }
+
     val canPlay = (controls == Controls.LEAD || controls == Controls.FOLLOW) && selected.isNotEmpty() && run {
         val counts = CardSet.of(selected).counts()
         val trick = s.trick
@@ -167,6 +177,7 @@ fun buildTableUi(
         displays = displays,
         displayCombos = combos,
         gone = gone,
+        trickOwner = if (s.trick != null) s.trickOwner else -1,
         bottom = s.bottom.cards().sortedWith(DISPLAY_ORDER),
         bottomRevealed = s.landlord >= 0,
         baseScore = s.config.baseScore,
@@ -178,6 +189,7 @@ fun buildTableUi(
         dealing = dealing,
         result = s.result,
         showResult = showResult && finished,
+        paused = paused,
     )
 }
 
