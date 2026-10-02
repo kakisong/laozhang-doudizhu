@@ -52,7 +52,7 @@ class SuperRoomSmokeTest {
 
     @Test
     fun allRoomsAreReadableAndReachableAt800By360WithLargerText() {
-        verifyShortLobby(DpSize(800.dp, 360.dp), DpSize(486.dp, 274.dp), coins = 30_000)
+        verifyShortLobby(DpSize(800.dp, 360.dp), DpSize(486.dp, 274.dp), coins = 100_000)
     }
 
     @Test
@@ -61,7 +61,7 @@ class SuperRoomSmokeTest {
             DeviceConfigurationOverride(DeviceConfigurationOverride.ForcedSize(DpSize(960.dp, 380.dp))) {
                 DdzTheme {
                     Box(Modifier.fillMaxSize()) {
-                        LobbyRooms(30_000, compact = false, short = false, onEnterRoom = {},
+                        LobbyRooms(100_000, compact = false, short = false, onEnterRoom = {},
                             modifier = Modifier.size(800.dp, 320.dp))
                     }
                 }
@@ -104,7 +104,7 @@ class SuperRoomSmokeTest {
             card.performClick()
             rule.runOnIdle { assertEquals(room, chosen) }
         }
-        rule.onNode(hasContentDescription("超级场，离线 AI对手，底分 2000，入场需要 20000 金币"))
+        rule.onNode(hasContentDescription("超级场，离线 AI对手，底分 10000，入场需要 100000 金币"))
             .assertIsDisplayed()
     }
 

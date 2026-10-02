@@ -135,5 +135,5 @@ enum class Room(val title: String, val baseScore: Long, val difficulty: Difficul
     NOVICE("新手场", 100, Difficulty.EASY, 100, "对手出牌随意，适合熟悉规则"),
     NORMAL("普通场", 500, Difficulty.NORMAL, 5_000, "对手会记牌、会配合"),
     MASTER("高手场", 2_000, Difficulty.HARD, 20_000, "对手推演残局，步步紧逼"),
-    SUPER("超级场", 2_000, Difficulty.SUPER, 20_000, "离线 AI 对手，挑战更强牌技"),
+    SUPER("超级场", 10_000, Difficulty.SUPER, 100_000, "离线 AI 对手，挑战更强牌技"),
 }
